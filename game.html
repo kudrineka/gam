@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Три в ряд: Волшебные камни</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        
+        body {
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            transition: background-image 0.5s ease;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-image: url('https://images.unsplash.com/photo-1518562180175-34a163b1a9a9?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+        }
+        
+        h1 {
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .game-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            width: fit-content;
+            position: relative;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            width: 400px;
+            margin-bottom: 15px;
+            background-color: #fff;
+            padding: 12px 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            font-weight: bold;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 5px;
+            background-color: #444;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-board:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%);
+            pointer-events: none;
+        }
+        
+        .tile {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .tile:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 50%);
+            border-radius: 8px;
+        }
+        
+        .tile:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 15px rgba(255,255,255,0.7);
+        }
+        
+        .tile.selected {
+            animation: pulse 0.8s infinite;
+            box-shadow: 0 0 20px gold;
+            z-index: 10;
+        }
+        
+        .tile.swapping {
+            z-index: 20;
+            transition: transform 0.3s ease;
+        }
+        
+        .tile.matched {
+            animation: matched 0.5s forwards;
+        }
+        
+        .tile.falling {
+            transition: transform 0.3s ease-in-out;
+            z-index: 5;
+        }
+        
+        .tile.new {
+            animation: appear 0.4s;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes matched {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+        
+        @keyframes falling {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes appear {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.16);
+            font-weight: bold;
+            min-width: 120px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+        
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        #shuffle {
+            background-color: #f39c12;
+        }
+        
+        #shuffle:hover {
+            background-color: #e67e22;
+        }
+        
+        #hint {
+            background-color: #3498db;
+        }
+        
+        #hint:hover {
+            background-color: #2980b9;
+        }
+        
+        .level-complete {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 0 30px rgba(255,215,0,0.5);
+            border: 2px solid gold;
+            max-width: 80%;
+            animation: fadeIn 0.5s;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        
+        .level-complete h2 {
+            color: gold;
+            margin-top: 0;
+            font-size: 2em;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .level-complete p {
+            font-size: 1.2em;
+            margin-bottom: 25px;
+        }
+        
+        #next-level {
+            background-color: #9b59b6;
+            font-size: 1.1em;
+            padding: 12px 25px;
+        }
+        
+        #next-level:hover {
+            background-color: #8e44ad;
+        }
+        
+        .background-selector {
+            margin-top: 20px;
+            background-color: rgba(255,255,255,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        
+        .background-selector h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .background-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .bg-option {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s;
+            background-size: cover;
+            background-position: center;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+        
+        .bg-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+        }
+        
+        .bg-option.selected {
+            border-color: gold;
+            box-shadow: 0 0 15px gold;
+        }
+        
+        .combo {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            color: gold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            animation: comboFloat 1.5s forwards;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        @keyframes comboFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-100px); opacity: 0; }
+        }
+        
+        .score-popup {
+            position: absolute;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            animation: scoreFloat 1s forwards;
+            pointer-events: none;
+            z-index: 20;
+        }
+        
+        @keyframes scoreFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+        
+        @media (max-width: 600px) {
+            .game-board {
+                grid-template-columns: repeat(8, 40px);
+                grid-template-rows: repeat(8, 40px);
+                padding: 10px;
+            }
+            
+            .tile {
+                width: 40px;
+                height: 40px;
+                font-size: 22px;
+            }
+            
+            .game-info {
+                width: 340px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Три в ряд: Волшебные камни</h1>
+    
+    <div class="game-container">
+        <div class="game-info">
+            <div>Уровень: <span id="level">1</span></div>
+            <div>Очки: <span id="score">0</span></div>
+            <div>Цель: <span id="target">1000</span></div>
+        </div>
+        <div class="game-board" id="board"></div>
+        <div class="controls">
+            <button id="shuffle">🔀 Перемешать</button>
+            <button id="hint">💡 Подсказка</button>
+        </div>
+    </div>
+    
+    <div class="background-selector">
+        <h3>Выберите фон:</h3>
+        <div class="background-options">
+            <div class="bg-option selected" style="background-image: url('https://images.unsplash.com/photo-1518562180175-34a163b1a9a9?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')" data-bg="url('https://images.unsplash.com/photo-1518562180175-34a163b1a9a9?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+            <div class="bg-option" style="background-image: url('https://images.unsplash.com/photo-1534447677768-be436bb09401?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')" data-bg="url('https://images.unsplash.com/photo-1534447677768-be436bb09401?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+            <div class="bg-option" style="background-image: url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')" data-bg="url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+            <div class="bg-option" style="background-image: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')" data-bg="url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+            <div class="bg-option" style="background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')" data-bg="url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')"></div>
+        </div>
+    </div>
+    
+    <div class="overlay" id="overlay"></div>
+    
+    <div class="level-complete" id="levelComplete">
+        <h2>Уровень пройден! 🎉</h2>
+        <p>Вы набрали <span id="final-score">0</span> очков</p>
+        <button id="next-level">Следующий уровень →</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const board = document.getElementById('board');
+            const scoreElement = document.getElementById('score');
+            const levelElement = document.getElementById('level');
+            const targetElement = document.getElementById('target');
+            const shuffleButton = document.getElementById('shuffle');
+            const hintButton = document.getElementById('hint');
+            const levelComplete = document.getElementById('levelComplete');
+            const nextLevelButton = document.getElementById('next-level');
+            const finalScoreElement = document.getElementById('final-score');
+            const bgOptions = document.querySelectorAll('.bg-option');
+            const overlay = document.getElementById('overlay');
+            
+            // Новые цвета фишек (более насыщенные)
+            const COLORS = ['#FF5252', '#4285F4', '#0F9D58', '#FFB900', '#9C27B0', '#FF6D00'];
+            const EMOJIS = ['❤️', '🔵', '🍀', '🌟', '🟣', '🍊'];
+            
+            let tiles = [];
+            let selectedTile = null;
+            let score = 0;
+            let currentLevel = 1;
+            let targetScore = 1000;
+            let boardSize = 8;
+            let comboCount = 0;
+            let lastMatchTime = 0;
+            let isAnimating = false;
+            
+            function initGame() {
+                score = 0;
+                comboCount = 0;
+                scoreElement.textContent = score;
+                levelElement.textContent = currentLevel;
+                targetScore = 1000 + (currentLevel - 1) * 500;
+                targetElement.textContent = targetScore;
+                
+                createBoard();
+                renderBoard();
+            }
+            
+            function createBoard() {
+                tiles = [];
+                board.innerHTML = '';
+                
+                for (let row = 0; row < boardSize; row++) {
+                    tiles[row] = [];
+                    for (let col = 0; col < boardSize; col++) {
+                        let possibleColors = [...COLORS];
+                        
+                        if (col >= 2) {
+                            if (tiles[row][col-1] === tiles[row][col-2]) {
+                                possibleColors = possibleColors.filter(c => c !== tiles[row][col-1]);
+                            }
+                        }
+                        
+                        if (row >= 2) {
+                            if (tiles[row-1][col] === tiles[row-2][col]) {
+                                possibleColors = possibleColors.filter(c => c !== tiles[row-1][col]);
+                            }
+                        }
+                        
+                        const color = possibleColors.length > 0 
+                            ? possibleColors[Math.floor(Math.random() * possibleColors.length)]
+                            : COLORS[Math.floor(Math.random() * COLORS.length)];
+                        
+                        tiles[row][col] = color;
+                    }
+                }
+            }
+            
+            function renderBoard() {
+                board.innerHTML = '';
+                
+                for (let row = 0; row < boardSize; row++) {
+                    for (let col = 0; col < boardSize; col++) {
+                        const tile = document.createElement('div');
+                        tile.className = 'tile';
+                        tile.style.backgroundColor = tiles[row][col];
+                        tile.textContent = EMOJIS[COLORS.indexOf(tiles[row][col])];
+                        tile.dataset.row = row;
+                        tile.dataset.col = col;
+                        
+                        if (tiles[row][col] !== null) {
+                            tile.addEventListener('click', () => handleTileClick(row, col));
+                        }
+                        
+                        board.appendChild(tile);
+                    }
+                }
+                
+                updateSelectedTile();
+            }
+            
+            function handleTileClick(row, col) {
+                if (isAnimating || overlay.style.display === 'block') return;
+                
+                if (selectedTile === null) {
+                    selectedTile = { row, col };
+                    updateSelectedTile();
+                    return;
+                }
+                
+                if (selectedTile.row === row && selectedTile.col === col) {
+                    selectedTile = null;
+                    updateSelectedTile();
+                    return;
+                }
+                
+                const isAdjacent = 
+                    (Math.abs(selectedTile.row - row) === 1 && selectedTile.col === col) ||
+                    (Math.abs(selectedTile.col - col) === 1 && selectedTile.row === row);
+                
+                if (isAnimating) return;
+                
+                if (isAdjacent) {
+                    isAnimating = true;
+                    animateSwap(selectedTile.row, selectedTile.col, row, col, () => {
+                        swapTiles(selectedTile.row, selectedTile.col, row, col);
+                        
+                        const matches = findMatches();
+                        
+                        if (matches.length > 0) {
+                            processMatches(matches);
+                        } else {
+                            animateSwap(selectedTile.row, selectedTile.col, row, col, () => {
+                                swapTiles(selectedTile.row, selectedTile.col, row, col);
+                                selectedTile = null;
+                                updateSelectedTile();
+                                isAnimating = false;
+                            });
+                        }
+                    });
+                } else {
+                    selectedTile = { row, col };
+                    updateSelectedTile();
+                }
+            }
+            
+            function animateSwap(row1, col1, row2, col2, callback) {
+                const tile1 = document.querySelector(`.tile[data-row="${row1}"][data-col="${col1}"]`);
+                const tile2 = document.querySelector(`.tile[data-row="${row2}"][data-col="${col2}"]`);
+                
+                if (!tile1 || !tile2) {
+                    callback();
+                    return;
+                }
+
+                tile1.classList.add('swapping');
+                tile2.classList.add('swapping');
+                
+                const duration = 300;
+                const startTime = performance.now();
+                
+                function animate(time) {
+                    const elapsed = time - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    const dx = (col2 - col1) * 55 * progress;
+                    const dy = (row2 - row1) * 55 * progress;
+                    
+                    tile1.style.transform = `translate(${dx}px, ${dy}px)`;
+                    tile2.style.transform = `translate(${-dx}px, ${-dy}px)`;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        tile1.style.transform = '';
+                        tile1.classList.remove('swapping');
+                        
+                        tile2.style.transform = '';
+                        tile2.classList.remove('swapping');
+                        
+                        callback();
+                    }
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            function swapTiles(row1, col1, row2, col2) {
+                const temp = tiles[row1][col1];
+                tiles[row1][col1] = tiles[row2][col2];
+                tiles[row2][col2] = temp;
+            }
+            
+            function updateSelectedTile() {
+                document.querySelectorAll('.tile').forEach(tile => {
+                    tile.classList.remove('selected');
+                });
+                
+                if (selectedTile !== null) {
+                    const tile = document.querySelector(`.tile[data-row="${selectedTile.row}"][data-col="${selectedTile.col}"]`);
+                    if (tile) tile.classList.add('selected');
+                }
+            }
+            
+            function findMatches() {
+                const matches = [];
+                
+                // Горизонтальные совпадения
+                for (let row = 0; row < boardSize; row++) {
+                    for (let col = 0; col < boardSize - 2; col++) {
+                        if (tiles[row][col] === tiles[row][col+1] && tiles[row][col] === tiles[row][col+2]) {
+                            const color = tiles[row][col];
+                            let match = [{row, col}];
+                            
+                            for (let c = col + 1; c < boardSize; c++) {
+                                if (tiles[row][c] === color) {
+                                    match.push({row, col: c});
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            if (match.length >= 3) {
+                                matches.push(match);
+                                col += match.length - 1;
+                            }
+                        }
+                    }
+                }
+                
+                // Вертикальные совпадения
+                for (let col = 0; col < boardSize; col++) {
+                    for (let row = 0; row < boardSize - 2; row++) {
+                        if (tiles[row][col] === tiles[row+1][col] && tiles[row][col] === tiles[row+2][col]) {
+                            const color = tiles[row][col];
+                            let match = [{row, col}];
+                            
+                            for (let r = row + 1; r < boardSize; r++) {
+                                if (tiles[r][col] === color) {
+                                    match.push({row: r, col});
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            if (match.length >= 3) {
+                                matches.push(match);
+                                row += match.length - 1;
+                            }
+                        }
+                    }
+                }
+                
+                return matches;
+            }
+            
+            function processMatches(matches) {
+                const uniqueMatches = [];
+                const matchedCells = new Set();
+                
+                for (const match of matches) {
+                    const uniqueMatch = [];
+                    for (const cell of match) {
+                        const key = `${cell.row},${cell.col}`;
+                        if (!matchedCells.has(key)) {
+                            matchedCells.add(key);
+                            uniqueMatch.push(cell);
+                        }
+                    }
+                    if (uniqueMatch.length > 0) {
+                        uniqueMatches.push(uniqueMatch);
+                    }
+                }
+                
+                const now = Date.now();
+                if (now - lastMatchTime < 2000) {
+                    comboCount++;
+                } else {
+                    comboCount = 1;
+                }
+                lastMatchTime = now;
+                
+                if (comboCount > 1) {
+                    showCombo(comboCount);
+                }
+                
+                const basePoints = uniqueMatches.reduce((sum, match) => sum + match.length * 10, 0);
+                const points = basePoints * comboCount;
+                score += points;
+                scoreElement.textContent = score;
+                
+                showScorePopups(uniqueMatches, points);
+                
+                animateMatches(uniqueMatches, () => {
+                    fillEmptySpaces();
+                    
+                    setTimeout(() => {
+                        const newMatches = findMatches();
+                        if (newMatches.length > 0) {
+                            processMatches(newMatches);
+                        } else {
+                            selectedTile = null;
+                            updateSelectedTile();
+                            isAnimating = false;
+                            
+                            if (score >= targetScore) {
+                                showLevelComplete();
+                            }
+                        }
+                    }, 500);
+                });
+            }
+            
+            function animateMatches(matches, callback) {
+                matches.forEach(match => {
+                    match.forEach(cell => {
+                        const tile = document.querySelector(`.tile[data-row="${cell.row}"][data-col="${cell.col}"]`);
+                        if (tile) {
+                            tile.classList.add('matched');
+                        }
+                    });
+                });
+                
+                setTimeout(() => {
+                    matches.forEach(match => {
+                        match.forEach(cell => {
+                            tiles[cell.row][cell.col] = null;
+                        });
+                    });
+                    
+                    renderBoard();
+                    callback();
+                }, 500);
+            }
+            
+            function fillEmptySpaces() {
+                for (let col = 0; col < boardSize; col++) {
+                    let emptyRow = boardSize - 1;
+                    
+                    for (let row = boardSize - 1; row >= 0; row--) {
+                        if (tiles[row][col] !== null) {
+                            if (emptyRow !== row) {
+                                const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+                                if (tile) {
+                                    tile.style.transform = `translateY(${(emptyRow - row) * 55}px)`;
+                                    tile.classList.add('falling');
+                                    
+                                    setTimeout(() => {
+                                        tile.style.transform = '';
+                                        tile.classList.remove('falling');
+                                    }, 300);
+                                }
+                                
+                                tiles[emptyRow][col] = tiles[row][col];
+                                tiles[row][col] = null;
+                            }
+                            emptyRow--;
+                        }
+                    }
+                    
+                    for (let row = emptyRow; row >= 0; row--) {
+                        tiles[row][col] = COLORS[Math.floor(Math.random() * COLORS.length)];
+                        const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+                        if (tile) {
+                            tile.classList.add('new');
+                            setTimeout(() => tile.classList.remove('new'), 400);
+                        }
+                    }
+                }
+                
+                renderBoard();
+            }
+            
+            function showLevelComplete() {
+                finalScoreElement.textContent = score;
+                overlay.style.display = 'block';
+                levelComplete.style.display = 'block';
+            }
+            
+            function nextLevel() {
+                currentLevel++;
+                overlay.style.display = 'none';
+                levelComplete.style.display = 'none';
+                initGame();
+            }
+            
+            function shuffleBoard() {
+                if (isAnimating) return;
+                
+                const flatTiles = [];
+                for (let row = 0; row < boardSize; row++) {
+                    for (let col = 0; col < boardSize; col++) {
+                        flatTiles.push(tiles[row][col]);
+                    }
+                }
+                
+                for (let i = flatTiles.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [flatTiles[i], flatTiles[j]] = [flatTiles[j], flatTiles[i]];
+                }
+                
+                let index = 0;
+                for (let row = 0; row < boardSize; row++) {
+                    for (let col = 0; col < boardSize; col++) {
+                        tiles[row][col] = flatTiles[index++];
+                    }
+                }
+                
+                const matches = findMatches();
+                if (matches.length > 0) {
+                    setTimeout(shuffleBoard, 100);
+                } else {
+                    renderBoard();
+                    selectedTile = null;
+                    updateSelectedTile();
+                }
+            }
+            
+            function showHint() {
+                if (isAnimating) return;
+                
+                const moves = findPossibleMoves();
+                
+                if (moves.length > 0) {
+                    const move = moves[Math.floor(Math.random() * moves.length)];
+                    
+                    selectedTile = { row: move.row1, col: move.col1 };
+                    updateSelectedTile();
+                    
+                    const tile = document.querySelector(`.tile[data-row="${move.row2}"][data-col="${move.col2}"]`);
+                    if (tile) {
+                        let blinkCount = 0;
+                        const maxBlinks = 4;
+                        
+                        const blinkInterval = setInterval(() => {
+                            tile.style.boxShadow = blinkCount % 2 === 0 
+                                ? '0 0 20px white' 
+                                : 'none';
+                            blinkCount++;
+                            
+                            if (blinkCount >= maxBlinks * 2) {
+                                clearInterval(blinkInterval);
+                                tile.style.boxShadow = '';
+                            }
+                        }, 200);
+                    }
+                } else {
+                    alert('Нет возможных ходов! Перемешайте доску.');
+                }
+            }
+            
+            function findPossibleMoves() {
+                const moves = [];
+                
+                for (let row = 0; row < boardSize; row++) {
+                    for (let col = 0; col < boardSize; col++) {
+                        if (col < boardSize - 1) {
+                            [tiles[row][col], tiles[row][col+1]] = [tiles[row][col+1], tiles[row][col]];
+                            
+                            const matches = findMatches();
+                            if (matches.length > 0) {
+                                moves.push({
+                                    row1: row,
+                                    col1: col,
+                                    row2: row,
+                                    col2: col + 1
+                                });
+                            }
+                            
+                            [tiles[row][col], tiles[row][col+1]] = [tiles[row][col+1], tiles[row][col]];
+                        }
+                        
+                        if (row < boardSize - 1) {
+                            [tiles[row][col], tiles[row+1][col]] = [tiles[row+1][col], tiles[row][col]];
+                            
+                            const matches = findMatches();
+                            if (matches.length > 0) {
+                                moves.push({
+                                    row1: row,
+                                    col1: col,
+                                    row2: row + 1,
+                                    col2: col
+                                });
+                            }
+                            
+                            [tiles[row][col], tiles[row+1][col]] = [tiles[row+1][col], tiles[row][col]];
+                        }
+                    }
+                }
+                
+                return moves;
+            }
+            
+            function showCombo(count) {
+                const combo = document.createElement('div');
+                combo.className = 'combo';
+                combo.textContent = `COMBO x${count}!`;
+                combo.style.left = `${board.offsetWidth / 2 - 50}px`;
+                combo.style.top = `${board.offsetHeight / 2 - 50}px`;
+                board.appendChild(combo);
+                
+                setTimeout(() => {
+                    combo.remove();
+                }, 1500);
+            }
+            
+            function showScorePopups(matches, totalPoints) {
+                const pointsPerMatch = Math.floor(totalPoints / matches.length);
+                
+                matches.forEach((match, index) => {
+                    const firstCell = match[0];
+                    const tile = document.querySelector(`.tile[data-row="${firstCell.row}"][data-col="${firstCell.col}"]`);
+                    if (tile) {
+                        const popup = document.createElement('div');
+                        popup.className = 'score-popup';
+                        popup.textContent = `+${pointsPerMatch}`;
+                        popup.style.left = `${tile.offsetLeft + tile.offsetWidth / 2 - 15}px`;
+                        popup.style.top = `${tile.offsetTop - 10}px`;
+                        board.appendChild(popup);
+                        
+                        setTimeout(() => {
+                            popup.remove();
+                        }, 1000);
+                    }
+                });
+            }
+            
+            // Обработчики событий
+            shuffleButton.addEventListener('click', shuffleBoard);
+            hintButton.addEventListener('click', showHint);
+            nextLevelButton.addEventListener('click', nextLevel);
+            
+            // Выбор фона
+            bgOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    bgOptions.forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    document.body.style.backgroundImage = option.dataset.bg;
+                });
+            });
+            
+            // Начало игры
+            initGame();
+            
+            // Управление с клавиатуры
+            document.addEventListener('keydown', (e) => {
+                if (selectedTile === null || isAnimating || overlay.style.display === 'block') return;
+                
+                let newRow = selectedTile.row;
+                let newCol = selectedTile.col;
+                
+                switch (e.key) {
+                    case 'ArrowUp':
+                        newRow = Math.max(0, selectedTile.row - 1);
+                        break;
+                    case 'ArrowDown':
+                        newRow = Math.min(boardSize - 1, selectedTile.row + 1);
+                        break;
+                    case 'ArrowLeft':
+                        newCol = Math.max(0, selectedTile.col - 1);
+                        break;
+                    case 'ArrowRight':
+                        newCol = Math.min(boardSize - 1, selectedTile.col + 1);
+                        break;
+                    case ' ':
+                    case 'Enter':
+                        handleTileClick(selectedTile.row, selectedTile.col);
+                        return;
+                    default:
+                        return;
+                }
+                
+                if (newRow !== selectedTile.row || newCol !== selectedTile.col) {
+                    handleTileClick(newRow, newCol);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
